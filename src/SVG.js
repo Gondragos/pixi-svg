@@ -257,7 +257,7 @@ export default class SVG extends PIXI.Graphics {
      */
     svgPath (node) {
         const d = node.getAttribute('d');
-        let x, y;
+        let x, y, x2, y2, lastCommandCode = '';
         const commands = dPathParse(d);
         for (var i = 0; i < commands.length; i++) {
             const command = commands[i];
@@ -314,8 +314,8 @@ export default class SVG extends PIXI.Graphics {
                     this.bezierCurveTo(
                         command.cp1.x,
                         command.cp1.y,
-                        command.cp2.x,
-                        command.cp2.y,
+                        x2 = command.cp2.x,
+                        y2 = command.cp2.y,
                         x = command.end.x,
                         y = command.end.y
                     );
@@ -327,14 +327,65 @@ export default class SVG extends PIXI.Graphics {
                     this.bezierCurveTo(
                         currX + command.cp1.x,
                         currY + command.cp1.y,
-                        currX + command.cp2.x,
-                        currY + command.cp2.y,
+                        x2 = currX + command.cp2.x,
+                        y2 = currY + command.cp2.y,
                         x += command.end.x,
                         y += command.end.y
                     );
                     break;
                 }
-                case 's':
+                case 's': {
+                    const currX = x;
+                    const currY = y;
+                    let newX1, newY1;
+                    switch (lastCommandCode) {
+                        case 'c':
+                        case 'C':
+                        case 's':
+                        case 'S':
+                            newX1 = 2 * currX - x2;
+                            newY1 = 2 * currY - y2;
+                            break;
+                        default:
+                            newX1 = currX + command.cp.x
+                            newY1 = currY + command.cp.y
+                            break;
+                    }
+                    this.bezierCurveTo(
+                        newX1,
+                        newY1,
+                        x2 = currX + command.cp.x,
+                        y2 = currY + command.cp.y,
+                        x += command.end.x,
+                        y += command.end.y
+                    );
+                    break;
+                }
+                case 'S': {
+                    let newX1, newY1;
+                    switch (lastCommandCode) {
+                        case 'c':
+                        case 'C':
+                        case 's':
+                        case 'S':
+                            newX1 = 2 * x - x2;
+                            newY1 = 2 * y - y2;
+                            break;
+                        default:
+                            newX1 = command.cp.x
+                            newY1 = command.cp.y
+                            break;
+                    }
+                    this.bezierCurveTo(
+                        newX1,
+                        newY1,
+                        x2 = command.cp.x,
+                        y2 = command.cp.y,
+                        x = command.end.x,
+                        y = command.end.y
+                    );
+                    break;
+                }
                 case 'q': {
                     const currX = x;
                     const currY = y;
@@ -346,7 +397,6 @@ export default class SVG extends PIXI.Graphics {
                     );
                     break;
                 }
-                case 'S':
                 case 'Q': {
                     this.quadraticCurveTo(
                         command.cp.x,
@@ -363,6 +413,7 @@ export default class SVG extends PIXI.Graphics {
                     break;
                 }
             }
+            lastCommandCode = command.code;
         }
     }
 }
